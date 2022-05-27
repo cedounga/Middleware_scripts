@@ -1,30 +1,44 @@
 pipeline {
     agent any
-
+    tools{
+        maven 'M2_HOME'
+    }
+    environment {
+    registry = '153778222311.dkr.ecr.us-east-2.amazonaws.com/devops_repository'
+    registryCredential = 'jenkins-ecr'
+    dockerimage = ''
+  }
     stages {
-        stage('Hello') {
-            steps {
-                echo 'Hello'
-                sleep 5
+        stage('Checkout'){
+            steps{
+                git branch: 'main', url: 'https://github.com/cedounga/cedou-geolocation-.git'
             }
         }
-        stage('build') {
+        stage('Code Build') {
             steps {
-                echo 'build'
-                sleep 5
+                sh 'mvn clean package'
             }
         }
-        stage('cedou') {
+        stage('Test') {
             steps {
-                echo 'cedou'
-                sleep 5
+                sh 'mvn test'
             }
         }
-        stage('deploy') {
+        stage('Build Image') {
             steps {
-                echo 'deploy'
-                sleep 5
+                script{
+                    dockerImage = docker.build registry + ":$BUILD_NUMBER"
+                } 
             }
         }
+        stage('Deploy image') {
+            steps{
+                script{ 
+                    docker.withRegistry("https://"+registry,"ecr:us-east-1:"+registryCredential) {
+                        dockerImage.push()
+                    }
+                }
+            }
+        }  
     }
 }
